@@ -21,6 +21,6 @@ test : test.pp.nat fastflow.so
 	./test.pp.nat
 
 clean:
-	rm -rf *.so *.o *.cm* \#*\# *~
+	rm -rf *.so *.o *.cm* \#*\# *~ *.pp.*
 
 .PHONY:clean test
