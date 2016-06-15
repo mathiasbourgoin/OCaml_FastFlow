@@ -3,13 +3,18 @@ open Kirc
 
 let (^>) =fun a b -> a ^ "\n" ^ b
 
-module type Fastflow = sig
-  val source : string
-  val create_accelerator : int -> unit
-  val run_accelerator : unit -> unit
+let fflib = Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_LAZY]
+
+
+class virtual ['a] fastflow = object
+  method virtual source : string
+  method virtual create_accelerator : int -> unit
+  method virtual run_accelerator : unit -> unit
+  method virtual offload_task : 'a -> unit
 end
 
-let to_farm (_,kern) =
+
+let to_src (_,kern) =
   let module Ff = struct
     let target_name = "FastFlow"
 
@@ -67,11 +72,8 @@ let to_farm (_,kern) =
     | Kern (args,body) -> (args_ args,
                            intro args,
                            Kirc_ff.parse 3 body)
-    | a -> "",  "", Kirc_ff.parse 3 a in
-
-
-
-
+    | a -> "",  "", Kirc_ff.parse 3 a
+in
   let ff_lib = begin
     "// this is needed for dlsym" ^>
     "extern \"C\" {
@@ -90,24 +92,28 @@ let to_farm (_,kern) =
 
   let ff_header = ""
   in
+  (*create_task_cfun kern.body;*)
   let (task, intro, body_source) = aux kern.body in
-  let ff_cpp_src = ff_header ^ "\n\n" ^task ^"\n\n" ^ Ff.kern_start ^>
-                   intro ^ __ ^ body_source ^ Ff.kern_end ^"\n\n" ^ ff_lib in
+  ff_header ^ "\n\n" ^task ^"\n\n" ^ Ff.kern_start ^>
+               intro ^ __ ^ body_source ^ Ff.kern_end ^"\n\n" ^ ff_lib
+
+let to_lib src =
   let channel = open_out "userfun.cpp" in
-  output_string channel ff_cpp_src;
+  output_string channel src;
   close_out channel;
   ignore(Sys.command ("g++ -O3  --shared -fPIC userfun.cpp -o userfun.so"));
-  ignore(Sys.command ("rm -f userfun.cpp"));
   let open Ctypes in
   let open Foreign in
-  let tmp_lib = Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
-  in
-  let module M = struct
-    let source = ff_cpp_src
-    let create_accelerator = Foreign.foreign ~from:tmp_lib "create_accelerator" (int @-> returning void)
-    let run_accelerator = Foreign.foreign ~from:tmp_lib "run_accelerator" (void @-> returning void)
-    type task
-  end
+  Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
 
-  in
-  (module M : Fastflow )
+let to_farm k =
+  let src = to_src k in
+  let lib = to_lib src in
+  let open Ctypes in
+  object (self) inherit [int] fastflow
+    (*let module M = struct*)
+    method source = src
+    method create_accelerator = Foreign.foreign ~from:lib "create_accelerator" (int @-> returning void)
+    method run_accelerator = Foreign.foreign ~from:lib "run_accelerator" (void @-> returning void)
+    method offload_task a= ()
+  end
