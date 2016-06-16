@@ -16,12 +16,12 @@ ff_ofarm farm(true);
 
 
 
-  typedef void(*addw)(ff::ff_ofarm*,int, void*);
-  typedef void(*offload_t)(ff::ff_ofarm*, void*);
-  typedef void(*userfun_t)(void*);
+typedef void(*addw)(ff::ff_ofarm*,int, void*);
+typedef void(*offload_t)(ff::ff_ofarm*, void*);
+typedef void(*userfun_t)(void*);
 
-  void* handle_biblio;
-  userfun_t userfun;
+void* handle_lib;
+userfun_t userfun;
 
 
   //
@@ -48,20 +48,20 @@ bool create_accelerator(int nworkers) {
   //
   // first of all load the dynamically generated worker function
   //
-  handle_biblio  = dlopen("./userfun.so",RTLD_LAZY);
-  if (handle_biblio==NULL){
+  handle_lib  = dlopen("./userfun.so",RTLD_LAZY);
+  if (handle_lib==NULL){
     std::cerr << "FF-OCAML-ACCELERATOR: error while loading business logic code" << dlerror() << std::endl;
     return false;
   }
 
 
-  userfun = (userfun_t) dlsym(handle_biblio, "userfun");
+  userfun = (userfun_t) dlsym(handle_lib, "userfun");
   if (!userfun){
     std::cerr << "FF-OCAML-ACCELERATOR: error while looking for business logic function pointer (" << dlerror() << ")" << std::endl;
     return false;
   }
 
-  // addw add_workers =  (addw) dlsym(handle_biblio, "add_workers");
+  // addw add_workers =  (addw) dlsym(handle_lib, "add_workers");
   // if(!add_workers) {
   //   std::cerr << "FF-OCAML-ACCELERATOR: error while looking for business logic function pointer (" << dlerror() << ")" << std::endl;
   //   return false;
@@ -100,4 +100,8 @@ void nomoretasks() {
 
 void offloadacc(void* task){
   farm.offload(task);
+}
+
+void wait(){
+  farm.wait();
 }
