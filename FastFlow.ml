@@ -10,7 +10,7 @@ class virtual ['a] fastflow = object
   method virtual source : string
   method virtual create_accelerator : int -> unit
   method virtual run_accelerator : unit -> unit
-  method virtual offload_task : 'a -> unit
+  method virtual wait : unit -> unit
 end
 
 
@@ -90,7 +90,7 @@ in
   end
   in
 
-  let ff_header = ""
+  let ff_header = "#include <math.h>"
   in
   (*create_task_cfun kern.body;*)
   let (task, intro, body_source) = aux kern.body in
@@ -101,7 +101,7 @@ let to_lib src =
   let channel = open_out "userfun.cpp" in
   output_string channel src;
   close_out channel;
-  ignore(Sys.command ("g++ -O3  --shared -fPIC userfun.cpp -o userfun.so"));
+  ignore(Sys.command ("g++ -g -O3  -lm --shared -fPIC userfun.cpp -o userfun.so"));
   let open Ctypes in
   let open Foreign in
   Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
@@ -115,5 +115,5 @@ let to_farm k =
     method source = src
     method create_accelerator = Foreign.foreign ~from:lib "create_accelerator" (int @-> returning void)
     method run_accelerator = Foreign.foreign ~from:lib "run_accelerator" (void @-> returning void)
-    method offload_task a= ()
+    method wait = Foreign.foreign ~from:lib "wait" (void @-> returning void)
   end
