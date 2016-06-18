@@ -6,7 +6,7 @@ let (^>) =fun a b -> a ^ "\n" ^ b
 let fflib = Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_LAZY]
 
 
-class virtual ['a] fastflow = object
+class virtual fastflow = object
   method virtual source : string
   method virtual create_accelerator : int -> unit
   method virtual run_accelerator : unit -> unit
@@ -14,7 +14,7 @@ class virtual ['a] fastflow = object
 end
 
 
-let to_src (_,kern) =
+let to_src (kern: ('a, 'b, 'c)kirc_function) =
   let module Ff = struct
     let target_name = "FastFlow"
 
@@ -93,7 +93,7 @@ in
   let ff_header = "#include <math.h>"
   in
   (*create_task_cfun kern.body;*)
-  let (task, intro, body_source) = aux kern.body in
+  let (task, intro, body_source) = aux kern.funbody in
   ff_header ^ "\n\n" ^task ^"\n\n" ^ Ff.kern_start ^>
                intro ^ __ ^ body_source ^ Ff.kern_end ^"\n\n" ^ ff_lib
 
@@ -106,11 +106,11 @@ let to_lib src =
   let open Foreign in
   Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
 
-let to_farm k =
+let to_farm (k : ('a,'b,'c)kirc_function) =
   let src = to_src k in
   let lib = to_lib src in
   let open Ctypes in
-  object (self) inherit [int] fastflow
+  object (self) inherit fastflow
     (*let module M = struct*)
     method source = src
     method create_accelerator = Foreign.foreign ~from:lib "create_accelerator" (int @-> returning void)

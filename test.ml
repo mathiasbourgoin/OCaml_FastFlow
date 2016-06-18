@@ -3,10 +3,11 @@
 open Spoc
 open FastFlow
 
-let incrv = kern v1 v2 v3 start_ end_ ->
+klet incrv = kfun v1 v2 v3 start_ end_ ->
     begin
       for i = start_ to end_  do
-        v3.[<i>] <- Math.Float32.sin (v1.[<i>] +. v2.[<i>]);
+        v3.[<i>] <- (v1.[<i>]/. (Std.float i) +.
+                     v2.[<i>] /. (Std.float i));
       done
     end
 
@@ -47,6 +48,9 @@ let _ =
   Printf.printf "Results!\n%!";
   incrv#wait();
   for i = 0 to Vector.length v1 - 1 do
-    Printf.printf "%g + %g = %g\n%!" (Mem.get v1 i) (Mem.get v2 i) (Mem.get v3 i)
+    Printf.printf "%g + %g = %g\n%!"
+      ((Mem.get v1 i) /. (float_of_int i))
+      ((Mem.get v2 i) /. (float_of_int i))
+      (Mem.get v3 i)
   done;
   Unix.sleep 1;
