@@ -1,17 +1,26 @@
 #ifndef BIBLIOTEQUE_HPP
 #define BIBLIOTEQUE_HPP
 
+#include <vector>
+#include <iostream>
+#include <vector>
+#include <functional>
+
+#include <dlfcn.h>
+#include <ff/farm.hpp>
+#include <ff/node.hpp>
 
 using namespace ff;
 
 
+
 extern "C"{
-bool create_accelerator(int);
-void run_accelerator();
-void offloadacc(void*);
-void loadresacc(void**);
-void nomoretasks();
-void wait();
+ff_ofarm* create_accelerator(int, const char*);
+void run_accelerator(ff_ofarm*);
+void offloadacc(ff_ofarm*, void*);
+void loadresacc(ff_ofarm*, void**);
+void nomoretasks(ff_ofarm* );
+void wait(ff_ofarm*);
 }
 
 #endif

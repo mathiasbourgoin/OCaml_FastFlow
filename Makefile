@@ -10,7 +10,7 @@ fastflow.so: fastflow.hpp fastflow.cpp
 	$(CXX) $(CXXFLAGS) -I $(FASTFLOWPATH) -shared -fPIC -o fastflow.so fastflow.cpp
 
 
-%.pp.ml : %.ml FastFlow.cmx
+%.pp.ml : %.ml
 	camlp4 -I +camlp4 -I `ocamlfind query sarek_syntax` -parser o -parser op -printer o kernels_int.cma $< > $@
 
 
@@ -20,7 +20,7 @@ fastflow.so: fastflow.hpp fastflow.cpp
 %.mli : %.ml
 	ocamlfind ocamlopt -thread -package spoc,sarek,ctypes.foreign -linkpkg $<  -i > $@
 
-test : test.pp.nat fastflow.so
+test : test.pp.nat fastflow.so 
 	./test.pp.nat
 
 clean:

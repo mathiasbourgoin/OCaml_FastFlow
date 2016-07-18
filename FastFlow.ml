@@ -3,12 +3,17 @@ open Kirc
 
 let (^>) =fun a b -> a ^ "\n" ^ b
 
-let fflib = Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_LAZY]
+let fflib = Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
 
+let id = ref 0
+
+open Ctypes
+type ofarm
+let ofarm : ofarm structure typ = structure "ff_ofarm"
 
 class virtual fastflow = object
   method virtual source : string
-  method virtual create_accelerator : int -> unit
+  method virtual create_accelerator : int -> (ofarm structure) ptr
   method virtual run_accelerator : unit -> unit
   method virtual wait : unit -> unit
 end
@@ -98,22 +103,31 @@ in
                intro ^ __ ^ body_source ^ Ff.kern_end ^"\n\n" ^ ff_lib
 
 let to_lib src =
-  let channel = open_out "userfun.cpp" in
+  let fname = "userfun"^(string_of_int !id) in
+  let channel = open_out (fname^".cpp") in
   output_string channel src;
   close_out channel;
-  ignore(Sys.command ("g++ -g -O3  -lm --shared -fPIC userfun.cpp -o userfun.so"));
+  print_string("g++ -g -O3  -lm --shared -fPIC "^fname^".cpp -o "^fname^".so\n");
+  ignore(Sys.command ("g++ -g -O3  -lm --shared -fPIC "^fname^".cpp -o "^fname^".so"));
   let open Ctypes in
   let open Foreign in
   Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
 
-let to_farm (k : ('a,'b,'c)kirc_function) =
+
+let to_farm (k : ('a,'b,'c)kirc_function) n =
+  incr id;
+  let open Ctypes in
   let src = to_src k in
   let lib = to_lib src in
-  let open Ctypes in
+  let create_accelerator = Foreign.foreign ~from:lib "create_accelerator" (int @-> string @-> returning (ptr ofarm) ) in
+  let run_accelerator = Foreign.foreign ~from:lib "run_accelerator" (ptr ofarm @-> returning void) in
+  let wait = Foreign.foreign ~from:lib "wait" (ptr ofarm @-> returning void) in
   object (self) inherit fastflow
-    (*let module M = struct*)
+(*let module M = struct*)
+    val accelerator = create_accelerator n ("./userfun"^(string_of_int !id)^".so")
+    method accelerator = (Ctypes.to_voidp accelerator)
+    method create_accelerator n = accelerator
+    method run_accelerator = fun () -> run_accelerator accelerator
+    method wait = fun () -> wait accelerator
     method source = src
-    method create_accelerator = Foreign.foreign ~from:lib "create_accelerator" (int @-> returning void)
-    method run_accelerator = Foreign.foreign ~from:lib "run_accelerator" (void @-> returning void)
-    method wait = Foreign.foreign ~from:lib "wait" (void @-> returning void)
   end

@@ -1,18 +1,8 @@
-#include <vector>
-#include <iostream>
-#include <vector>
-#include <functional>
-
-#include <dlfcn.h>
-
-#include <ff/farm.hpp>
-#include <ff/node.hpp>
-
 #include "fastflow.hpp"
 #include <assert.h>
 
 
-ff_ofarm farm(true);
+
 
 
 
@@ -20,7 +10,7 @@ typedef void(*addw)(ff::ff_ofarm*,int, void*);
 typedef void(*offload_t)(ff::ff_ofarm*, void*);
 typedef void(*userfun_t)(void*);
 
-void* handle_lib;
+//void* handle_lib;
 userfun_t userfun;
 
 
@@ -36,29 +26,26 @@ protected:
 public:
   // this is called after dloading the business logic code
   Worker(void* (*fun)(void *)): fun(fun) {}
-
   void * svc(void * t) {
     userfun(t);
   }
 };
 
 
-bool create_accelerator(int nworkers) {
-
+ff_ofarm* create_accelerator(int nworkers, const char* lib) {
+  ff_ofarm* farm = new ff_ofarm(true);
   //
   // first of all load the dynamically generated worker function
-  //
-  handle_lib  = dlopen("./userfun.so",RTLD_LAZY);
+  void* handle_lib  = dlopen(lib,RTLD_LAZY);
   if (handle_lib==NULL){
-    std::cerr << "FF-OCAML-ACCELERATOR: error while loading business logic code" << dlerror() << std::endl;
-    return false;
+    std::cerr << "FF-OCAML-ACCELERATOR: error while loading business logic code " << dlerror() << std::endl;
+    exit (-1);
   }
-
 
   userfun = (userfun_t) dlsym(handle_lib, "userfun");
   if (!userfun){
     std::cerr << "FF-OCAML-ACCELERATOR: error while looking for business logic function pointer (" << dlerror() << ")" << std::endl;
-    return false;
+    exit (-1);
   }
 
   // addw add_workers =  (addw) dlsym(handle_lib, "add_workers");
@@ -67,41 +54,43 @@ bool create_accelerator(int nworkers) {
   //   return false;
   // }
 
-
   std::vector<ff_node *> w;
   for(int i=0;i<nworkers;++i)
     w.push_back(new Worker((void*(*)(void *)) userfun));
-  farm.add_workers(w);
+  farm->add_workers(w);
 
 
-  return(true);
+  return(farm);
 }
 
-void run_accelerator() {
-  farm.run();
+void run_accelerator(ff_ofarm* farm) {
+  farm->run();
   return;
 }
 
 
-void loadresacc(void ** ou) {
-  farm.load_result(ou);
+void loadresacc(ff_ofarm* farm, void ** ou) {
+  farm->load_result(ou);
   return;
 }
 
 
 
 
-void nomoretasks() {
+void nomoretasks(ff_ofarm* farm) {
   void * eos = (void *)ff::FF_EOS;
-  offloadacc(eos);
+  offloadacc(farm, eos);
   return;
 }
 
 
-void offloadacc(void* task){
-  farm.offload(task);
+
+
+
+void offloadacc(ff_ofarm* farm, void* task){
+  farm->offload(task);
 }
 
-void wait(){
-  farm.wait();
+void wait(ff_ofarm* farm){
+  farm->wait();
 }
