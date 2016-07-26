@@ -83,12 +83,12 @@ in
     "// this is needed for dlsym" ^>
     "extern \"C\" {
 
-      void * userfun(void *);
+      void * userfun"^(string_of_int !id)^"(void *);
 
     }" ^>
 
     "// this is a wrapper
-    void * userfun(void * t) {
+    void * userfun"^(string_of_int !id)^"(void * t) {
       TASK * res = f((TASK *) t);
       return ((void *) res);
     }"
@@ -107,24 +107,24 @@ let to_lib src =
   let channel = open_out (fname^".cpp") in
   output_string channel src;
   close_out channel;
-  print_string("g++ -g -O3  -lm --shared -fPIC "^fname^".cpp -o "^fname^".so\n");
+  (*print_string("g++ -g -O3  -lm --shared -fPIC "^fname^".cpp -o "^fname^".so\n");*)
   ignore(Sys.command ("g++ -g -O3  -lm --shared -fPIC "^fname^".cpp -o "^fname^".so"));
   let open Ctypes in
   let open Foreign in
   Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
 
 
-let to_farm (k : ('a,'b,'c)kirc_function) n =
+let to_ofarm (k : ('a,'b,'c)kirc_function) n =
   incr id;
   let open Ctypes in
   let src = to_src k in
   let lib = to_lib src in
-  let create_accelerator = Foreign.foreign ~from:lib "create_accelerator" (int @-> string @-> returning (ptr ofarm) ) in
+  let create_accelerator = Foreign.foreign ~from:lib "create_accelerator" (int @-> string @-> string @-> returning (ptr ofarm) ) in
   let run_accelerator = Foreign.foreign ~from:lib "run_accelerator" (ptr ofarm @-> returning void) in
   let wait = Foreign.foreign ~from:lib "wait" (ptr ofarm @-> returning void) in
   object (self) inherit fastflow
 (*let module M = struct*)
-    val accelerator = create_accelerator n ("./userfun"^(string_of_int !id)^".so")
+    val accelerator = create_accelerator n ("./userfun"^(string_of_int !id)^".so") ("userfun"^(string_of_int !id))
     method accelerator = (Ctypes.to_voidp accelerator)
     method create_accelerator n = accelerator
     method run_accelerator = fun () -> run_accelerator accelerator

@@ -15,7 +15,7 @@ using namespace ff;
 
 
 extern "C"{
-ff_ofarm* create_accelerator(int, const char*);
+ff_ofarm* create_accelerator(int, const char*, const char*);
 void run_accelerator(ff_ofarm*);
 void offloadacc(ff_ofarm*, void*);
 void loadresacc(ff_ofarm*, void**);

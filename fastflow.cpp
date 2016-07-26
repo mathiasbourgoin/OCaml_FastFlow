@@ -11,7 +11,7 @@ typedef void(*offload_t)(ff::ff_ofarm*, void*);
 typedef void(*userfun_t)(void*);
 
 //void* handle_lib;
-userfun_t userfun;
+//userfun_t userfun;
 
 
   //
@@ -27,22 +27,25 @@ public:
   // this is called after dloading the business logic code
   Worker(void* (*fun)(void *)): fun(fun) {}
   void * svc(void * t) {
-    userfun(t);
+    fun(t);
   }
 };
 
 
-ff_ofarm* create_accelerator(int nworkers, const char* lib) {
+ff_ofarm* create_accelerator(int nworkers, const char* lib, const char* fun) {
   ff_ofarm* farm = new ff_ofarm(true);
+  userfun_t userfun;
   //
   // first of all load the dynamically generated worker function
+  //printf("lib : %s\n", lib);
   void* handle_lib  = dlopen(lib,RTLD_LAZY);
   if (handle_lib==NULL){
     std::cerr << "FF-OCAML-ACCELERATOR: error while loading business logic code " << dlerror() << std::endl;
     exit (-1);
   }
 
-  userfun = (userfun_t) dlsym(handle_lib, "userfun");
+  //printf("fun : %s\n", fun);
+  userfun = (userfun_t) dlsym(handle_lib, fun);
   if (!userfun){
     std::cerr << "FF-OCAML-ACCELERATOR: error while looking for business logic function pointer (" << dlerror() << ")" << std::endl;
     exit (-1);
