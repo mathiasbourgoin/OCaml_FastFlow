@@ -17,29 +17,21 @@ let measure_time s f =
   incr cpt;
   a;;
 
+(* for future use *)
 klet simple_incr = kfun a ->
 a + 1
 
-klet incrv = kfun v1 v2 v3 start_ end_ ->
+
+klet incrv = kfun v1  v2 v3 start_ end_ ->
+(* native code directly embedded into generated kernel *)
   $"printf(\"start : %d, end : %d\\n\", start_, end_)"$;
   for i = start_ to end_  do
     v3.[<i>] <- 0.;
-
     for j = 1 to i do
       v3.[<i>] <- v3.[<i>] +. (v1.[<i>]/. (Std.float i) +.
                                v2.[<i>] /. (Std.float i));
     done
   done
-
-
-
-(* klet incrv2 = kfun v1 v2 v3 start_ end_ ->
-  begin
-    for i = start_ to end_  do
-      v3.[<i>] <- (v1.[<i>]/. (Std.float i) +.
-                   v2.[<i>] /. (Std.float i)) +. 1.;
-    done
-   end *)
 
 
 let fill v1 v2 a1 a2 =
@@ -65,7 +57,7 @@ let _ =
   fill v1 v2 a1 a2;
   Printf.printf "Vectors 1 and 2 initialized\n%!";
 
-  measure_time "fastflow" (fun () ->
+  measure_time "sarek+fastflow" (fun () ->
   let incrv = (FastFlow.to_farm incrv  200)
   (*and incrv2 = (FastFlow.to_farm incrv2 5)*)
   in
@@ -89,8 +81,8 @@ let _ =
   Printf.printf "Results!\n%!";
   incrv#wait(););
 
-  let a3 =
-    measure_time "Sequentiel"
+  ignore(
+    measure_time "sequential"
       (fun () -> Array.init size
           (fun i -> let tmp = ref 0. in
             for j = 0 to i do
@@ -98,8 +90,4 @@ let _ =
                      (a2.(i)) /. (float_of_int i)
             done;
             !tmp))
-  in ();
-  for i = 1 to 100 (*Vector.length v1 - 1*) do
-    Printf.printf "v3[%d] = %g\n%!" i     (Mem.get v3 i)
-  done;
-  Unix.sleep 1;
+  )
