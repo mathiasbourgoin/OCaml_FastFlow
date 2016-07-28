@@ -21,12 +21,13 @@ klet simple_incr = kfun a ->
 a + 1
 
 klet incrv = kfun v1 v2 v3 start_ end_ ->
+  $"printf(\"start : %d, end : %d\\n\", start_, end_)"$;
   for i = start_ to end_  do
     v3.[<i>] <- 0.;
+
     for j = 1 to i do
       v3.[<i>] <- v3.[<i>] +. (v1.[<i>]/. (Std.float i) +.
                                v2.[<i>] /. (Std.float i));
-      $"v3[i]=0;"$
     done
   done
 

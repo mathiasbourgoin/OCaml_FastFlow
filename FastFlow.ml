@@ -95,10 +95,10 @@ in
   end
   in
 
-  let ff_header = "#include <math.h>"
+  let ff_header = "#include <math.h> \n#include<stdio.h>"
   in
   (*create_task_cfun kern.body;*)
-  let (task, intro, body_source) = aux kern.funbody in
+  let (task, intro, body_source) = aux (Kirc.rewrite kern.funbody) in
   ff_header ^ "\n\n" ^task ^"\n\n" ^ Ff.kern_start ^>
                intro ^ __ ^ body_source ^ Ff.kern_end ^"\n\n" ^ ff_lib
 
