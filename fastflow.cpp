@@ -6,8 +6,8 @@
 
 
 
-typedef void(*addw)(ff::ff_ofarm*,int, void*);
-typedef void(*offload_t)(ff::ff_ofarm*, void*);
+typedef void(*addw)(ff::ff_farm<>*,int, void*);
+typedef void(*offload_t)(ff::ff_farm<>*, void*);
 typedef void(*userfun_t)(void*);
 
 //void* handle_lib;
@@ -32,8 +32,8 @@ public:
 };
 
 
-ff_ofarm* create_accelerator(int nworkers, const char* lib, const char* fun) {
-  ff_ofarm* farm = new ff_ofarm(true);
+ff_farm<>* create_accelerator(int nworkers, const char* lib, const char* fun) {
+  ff_farm<>* farm = new ff_farm<>(true);
   userfun_t userfun;
   //
   // first of all load the dynamically generated worker function
@@ -66,13 +66,13 @@ ff_ofarm* create_accelerator(int nworkers, const char* lib, const char* fun) {
   return(farm);
 }
 
-void run_accelerator(ff_ofarm* farm) {
+void run_accelerator(ff_farm<>* farm) {
   farm->run();
   return;
 }
 
 
-void loadresacc(ff_ofarm* farm, void ** ou) {
+void loadresacc(ff_farm<>* farm, void ** ou) {
   farm->load_result(ou);
   return;
 }
@@ -80,7 +80,7 @@ void loadresacc(ff_ofarm* farm, void ** ou) {
 
 
 
-void nomoretasks(ff_ofarm* farm) {
+void nomoretasks(ff_farm<>* farm) {
   void * eos = (void *)ff::FF_EOS;
   offloadacc(farm, eos);
   return;
@@ -90,10 +90,10 @@ void nomoretasks(ff_ofarm* farm) {
 
 
 
-void offloadacc(ff_ofarm* farm, void* task){
+void offloadacc(ff_farm<>* farm, void* task){
   farm->offload(task);
 }
 
-void wait(ff_ofarm* farm){
+void wait(ff_farm<>* farm){
   farm->wait();
 }

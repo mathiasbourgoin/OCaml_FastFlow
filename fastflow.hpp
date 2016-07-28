@@ -15,12 +15,12 @@ using namespace ff;
 
 
 extern "C"{
-ff_ofarm* create_accelerator(int, const char*, const char*);
-void run_accelerator(ff_ofarm*);
-void offloadacc(ff_ofarm*, void*);
-void loadresacc(ff_ofarm*, void**);
-void nomoretasks(ff_ofarm* );
-void wait(ff_ofarm*);
+ff_farm<>* create_accelerator(int, const char*, const char*);
+void run_accelerator(ff_farm<>*);
+void offloadacc(ff_farm<>*, void*);
+void loadresacc(ff_farm<>*, void**);
+void nomoretasks(ff_farm<>* );
+void wait(ff_farm<>*);
 }
 
 #endif

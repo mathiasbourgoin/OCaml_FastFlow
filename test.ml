@@ -17,16 +17,18 @@ let measure_time s f =
   incr cpt;
   a;;
 
+klet simple_incr = kfun a ->
+a + 1
+
 klet incrv = kfun v1 v2 v3 start_ end_ ->
-    begin
-      for i = start_ to end_  do
-        v3.[<i>] <- 0.;
-        for j = 0 to i do
-          v3.[<i>] <- v3.[<i>] +. (v1.[<i>]/. (Std.float i) +.
-                       v2.[<i>] /. (Std.float i));
-          done
-      done
-    end
+  for i = start_ to end_  do
+    v3.[<i>] <- 0.;
+    for j = 1 to i do
+      v3.[<i>] <- v3.[<i>] +. (v1.[<i>]/. (Std.float i) +.
+                               v2.[<i>] /. (Std.float i));
+      $"v3[i]=0;"$
+    done
+  done
 
 
 
@@ -36,7 +38,8 @@ klet incrv = kfun v1 v2 v3 start_ end_ ->
       v3.[<i>] <- (v1.[<i>]/. (Std.float i) +.
                    v2.[<i>] /. (Std.float i)) +. 1.;
     done
-  end *)
+   end *)
+
 
 let fill v1 v2 a1 a2 =
 for i = 0 to Vector.length v1 - 1  do
@@ -49,7 +52,7 @@ done
 
 let _ =
   Printf.printf "Starting\n%!";
-  let size = 4906 and segment_size = 128 in
+  let size = 4096 and segment_size = 128 in
 
   let v1 = Vector.create Vector.float32 size in
   let v2 = Vector.create Vector.float32 size in
@@ -62,7 +65,7 @@ let _ =
   Printf.printf "Vectors 1 and 2 initialized\n%!";
 
   measure_time "fastflow" (fun () ->
-  let incrv = (FastFlow.to_ofarm incrv 20)
+  let incrv = (FastFlow.to_farm incrv  200)
   (*and incrv2 = (FastFlow.to_farm incrv2 5)*)
   in
   Printf.printf "Farm generated\n%!";
@@ -74,13 +77,13 @@ let _ =
   Printf.printf "Accelerator launched\n%!";
 
   for x = 0 to Vector.length v1/segment_size - 1 do
-    Incrv.offloadTask incrv#accelerator (v1, v2, v3, (x*segment_size), ((x+1)*segment_size-1));
+    incrv#offload_task (v1, v2, v3, (x*segment_size), ((x+1)*segment_size-1));
   done;
   Printf.printf "Tasks offloaded to accelerator\n%!";
-  Incrv.accNomoretasks incrv#accelerator;
+  incrv#no_more_tasks;
   Printf.printf "No more tasks\n%!";
   for x = 0 to Vector.length v1/segment_size - 1 do
-    Incrv.getResult incrv#accelerator (v1, v2, v3, 0, 0);
+    incrv#get_result (v1, v2, v3, 0, 0);
   done;
   Printf.printf "Results!\n%!";
   incrv#wait(););
@@ -94,12 +97,8 @@ let _ =
                      (a2.(i)) /. (float_of_int i)
             done;
             !tmp))
-  in ()
-(*)  for i = 0 to 100 (*Vector.length v1 - 1*) do
-    Printf.printf "%g + %g = %g\n%!"
-      ((Mem.get v1 i) /. (float_of_int i))
-      ((Mem.get v2 i) /. (float_of_int i))
-      (Mem.get v3 i)
+  in ();
+  for i = 1 to 100 (*Vector.length v1 - 1*) do
+    Printf.printf "v3[%d] = %g\n%!" i     (Mem.get v3 i)
   done;
   Unix.sleep 1;
-*)

@@ -19,7 +19,7 @@ class virtual fastflow = object
 end
 
 
-let to_src (kern: ('a, 'b, 'c)kirc_function) =
+let to_src (kern: ('a, 'b, 'c, 'd)kirc_function) =
   let module Ff = struct
     let target_name = "FastFlow"
 
@@ -114,7 +114,7 @@ let to_lib src =
   Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
 
 
-let to_ofarm (k : ('a,'b,'c)kirc_function) n =
+let to_farm (k : ('a,'b,'c, 'd)kirc_function) n  =
   incr id;
   let open Ctypes in
   let src = to_src k in
@@ -130,4 +130,8 @@ let to_ofarm (k : ('a,'b,'c)kirc_function) n =
     method run_accelerator = fun () -> run_accelerator accelerator
     method wait = fun () -> wait accelerator
     method source = src
+    (* from generated object *)
+    method offload_task = k.fastflow_acc#offloadTask self#accelerator
+    method no_more_tasks = k.fastflow_acc#noMoreTasks self#accelerator
+    method get_result = k.fastflow_acc#getResult self#accelerator
   end
