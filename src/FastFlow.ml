@@ -3,17 +3,21 @@ open Kirc
 
 let (^>) =fun a b -> a ^ "\n" ^ b
 
-let fflib = Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
+let fflib () = Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
 
 let id = ref 0
 
 open Ctypes
-type ofarm
-let ofarm : ofarm structure typ = structure "ff_ofarm"
+type farm
+let farm : farm structure typ = structure "ff_farm"
+
+
+type parallel_for
+let parallel_for : parallel_for structure typ = structure "ParallelFor"
 
 class virtual fastflow = object
   method virtual source : string
-  method virtual create_accelerator : int -> (ofarm structure) ptr
+  method virtual create_accelerator : int -> (farm structure) ptr
   method virtual run_accelerator : unit -> unit
   method virtual wait : unit -> unit
 end
@@ -78,7 +82,7 @@ let to_src (kern: ('a, 'b, 'c, 'd)kirc_function) =
                            intro args,
                            Kirc_ff.parse 3 body)
     | a -> "",  "", Kirc_ff.parse 3 a
-in
+  in
   let ff_lib = begin
     "// this is needed for dlsym" ^>
     "extern \"C\" {
@@ -98,30 +102,38 @@ in
   let ff_header = "#include <math.h> \n#include<stdio.h>"
   in
   (*create_task_cfun kern.body;*)
+  Printf.printf "#################\nBefore rewrite : \n";
+  Kirc.print_ast kern.funbody;
+  Printf.printf "#################\nAfter rewrite : \n";
   let (task, intro, body_source) = aux (Kirc.rewrite kern.funbody) in
+  Kirc.print_ast (Kirc.rewrite kern.funbody);
+  Pervasives.flush stdout;
   ff_header ^ "\n\n" ^task ^"\n\n" ^ Ff.kern_start ^>
-               intro ^ __ ^ body_source ^ Ff.kern_end ^"\n\n" ^ ff_lib
+  intro ^ __ ^ body_source ^ Ff.kern_end ^"\n\n" ^ ff_lib
 
-let to_lib src =
+
+
+let to_lib ?cc_opt:(opts=["-O3"; "-lm"]) ?includes:(inc=["math.h"; "stdio.h"]) src =
   let fname = "userfun"^(string_of_int !id) in
   let channel = open_out (fname^".cpp") in
   output_string channel src;
   close_out channel;
   (*print_string("g++ -g -O3  -lm --shared -fPIC "^fname^".cpp -o "^fname^".so\n");*)
-  ignore(Sys.command ("g++ -g -O3  -lm --shared -fPIC "^fname^".cpp -o "^fname^".so"));
+  ignore(Sys.command ("g++ -g -O3  "^(List.fold_left (fun a b -> a^" "^b) "" opts)^" --shared -fPIC "^fname^".cpp -o "^fname^".so"));
   let open Ctypes in
   let open Foreign in
   Dl.dlopen ~filename:"./fastflow.so" ~flags:[Dl.RTLD_NOW]
 
 
-let to_farm (k : ('a,'b,'c, 'd)kirc_function) n  =
+let to_farm (k : ('a,'b,'c, 'd) kirc_function) ?ordered:(o=false) n  =
   incr id;
   let open Ctypes in
   let src = to_src k in
+  let o = if o then "o" else "" in
   let lib = to_lib src in
-  let create_accelerator = Foreign.foreign ~from:lib "create_accelerator" (int @-> string @-> string @-> returning (ptr ofarm) ) in
-  let run_accelerator = Foreign.foreign ~from:lib "run_accelerator" (ptr ofarm @-> returning void) in
-  let wait = Foreign.foreign ~from:lib "wait" (ptr ofarm @-> returning void) in
+  let create_accelerator = Foreign.foreign ~from:lib ("create_"^o^"farm") (int @-> string @-> string @-> returning (ptr farm) ) in
+  let run_accelerator = Foreign.foreign ~from:lib ("run_"^o^"farm") (ptr farm @-> returning void) in
+  let wait = Foreign.foreign ~from:lib (o^"wait") (ptr farm @-> returning void) in
   object (self) inherit fastflow
 (*let module M = struct*)
     val accelerator = create_accelerator n ("./userfun"^(string_of_int !id)^".so") ("userfun"^(string_of_int !id))
@@ -134,4 +146,17 @@ let to_farm (k : ('a,'b,'c, 'd)kirc_function) n  =
     method offload_task = k.fastflow_acc#offloadTask self#accelerator
     method no_more_tasks = k.fastflow_acc#noMoreTasks self#accelerator
     method get_result = k.fastflow_acc#getResult self#accelerator
+  end
+
+
+let to_parallel_for (k : ('a,'b,'c, 'd) kirc_function) n =
+  incr id;
+  let open Ctypes in
+  let src = to_src k in
+  let lib = to_lib src in
+  let create_pf = Foreign.foreign ~from:lib "create_pf" (int @-> string @-> string @-> returning (ptr parallel_for) ) in
+  object (self)
+    val pf = create_pf n ("./userfun"^(string_of_int !id)^".so") ("userfun"^(string_of_int !id))
+    method pf = Ctypes.to_voidp pf
+    method parallel_for = ()
   end

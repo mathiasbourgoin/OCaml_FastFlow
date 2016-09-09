@@ -1,0 +1,6 @@
+version = "0.1-alpha"
+description = "OCaml-Fastflow"
+requires = "sarek"
+archive(byte) = "FastFlow.cmo"
+archive(native) = "FastFlow.cmx"
+exists_if = "FastFlow.cmo"
